@@ -1,0 +1,197 @@
+apiVersion: v1
+kind: Template
+metadata:
+  creationTimestamp: null
+  name: hello-php
+objects:
+- apiVersion: v1
+  kind: BuildConfig
+  metadata:
+    creationTimestamp: null
+    name: hello-php
+  spec:
+    output:
+      to:
+        kind: ImageStreamTag
+        name: hello-php:latest
+    resources: {}
+    source:
+      git:
+        uri: https://github.com/nekop/hello-php
+      type: Git
+    strategy:
+      sourceStrategy:
+        from:
+          kind: ImageStreamTag
+          name: php:latest
+          namespace: openshift
+      type: Source
+    triggers:
+    - github:
+        secret: secret101
+      type: GitHub
+    - generic:
+        secret: secret101
+      type: Generic
+    - imageChange: {}
+      type: ImageChange
+  status:
+    lastVersion: 0
+- apiVersion: v1
+  kind: DeploymentConfig
+  metadata:
+    creationTimestamp: null
+    name: hello-php
+  spec:
+    replicas: 1
+    selector:
+      deploymentconfig: hello-php
+    strategy:
+      resources: {}
+      type: Recreate
+    template:
+      metadata:
+        creationTimestamp: null
+        labels:
+          deploymentconfig: hello-php
+      spec:
+        containers:
+        - env:
+          - name: MYSQL_USER
+            value: user
+          - name: MYSQL_PASSWORD
+            value: pass
+          - name: MYSQL_DATABASE
+            value: hello
+          image: library/hello-php:latest
+          imagePullPolicy: Always
+          name: hello-php
+          ports:
+          - containerPort: 8080
+            name: hello-php-tcp-8080
+            protocol: TCP
+          resources: {}
+          securityContext:
+            capabilities: {}
+            privileged: false
+          terminationMessagePath: /dev/termination-log
+        dnsPolicy: ClusterFirst
+        restartPolicy: Always
+    triggers:
+    - type: ConfigChange
+    - imageChangeParams:
+        automatic: true
+        containerNames:
+        - hello-php
+        from:
+          kind: ImageStreamTag
+          name: hello-php:latest
+      type: ImageChange
+  status: {}
+- apiVersion: v1
+  kind: DeploymentConfig
+  metadata:
+    creationTimestamp: null
+    labels:
+      template: mysql-ephemeral-template
+    name: hello-php-mysql
+  spec:
+    replicas: 1
+    selector:
+      name: hello-php-mysql
+    strategy:
+      resources: {}
+      type: Recreate
+    template:
+      metadata:
+        creationTimestamp: null
+        labels:
+          name: hello-php-mysql
+      spec:
+        containers:
+        - env:
+          - name: MYSQL_USER
+            value: user
+          - name: MYSQL_PASSWORD
+            value: pass
+          - name: MYSQL_DATABASE
+            value: hello
+          image: registry.access.redhat.com/openshift3/mysql-55-rhel7:latest
+          imagePullPolicy: IfNotPresent
+          name: mysql
+          ports:
+          - containerPort: 3306
+            protocol: TCP
+          resources: {}
+          securityContext:
+            capabilities: {}
+            privileged: false
+          terminationMessagePath: /dev/termination-log
+          volumeMounts:
+          - mountPath: /var/lib/mysql/data
+            name: hello-php-mysql-data
+        dnsPolicy: ClusterFirst
+        restartPolicy: Always
+        volumes:
+        - emptyDir: {}
+          name: hello-php-mysql-data
+    triggers:
+    - imageChangeParams:
+        automatic: true
+        containerNames:
+        - mysql
+        from:
+          kind: ImageStreamTag
+          name: mysql:latest
+          namespace: openshift
+      type: ImageChange
+    - type: ConfigChange
+  status: {}
+- apiVersion: v1
+  kind: Service
+  metadata:
+    creationTimestamp: null
+    name: hello-php
+  spec:
+    portalIP: ""
+    ports:
+    - name: hello-php-tcp-8080
+      nodePort: 0
+      port: 8080
+      protocol: TCP
+      targetPort: 8080
+    selector:
+      deploymentconfig: hello-php
+    sessionAffinity: None
+    type: ClusterIP
+  status:
+    loadBalancer: {}
+- apiVersion: v1
+  kind: Service
+  metadata:
+    creationTimestamp: null
+    labels:
+      template: mysql-ephemeral-template
+    name: hello-php-mysql
+  spec:
+    portalIP: ""
+    ports:
+    - name: mysql
+      nodePort: 0
+      port: 3306
+      protocol: TCP
+      targetPort: 3306
+    selector:
+      name: hello-php-mysql
+    sessionAffinity: None
+    type: ClusterIP
+  status:
+    loadBalancer: {}
+- apiVersion: v1
+  kind: ImageStream
+  metadata:
+    creationTimestamp: null
+    name: hello-php
+  spec: {}
+  status:
+    dockerImageRepository: ""
