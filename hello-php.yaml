@@ -68,7 +68,7 @@ objects:
           name: hello-php
           ports:
           - containerPort: 8080
-            name: hello-php-tcp-8080
+            name: hello-php-8080
             protocol: TCP
           resources: {}
           securityContext:
@@ -155,7 +155,7 @@ objects:
   spec:
     portalIP: ""
     ports:
-    - name: hello-php-tcp-8080
+    - name: hello-php-8080
       nodePort: 0
       port: 8080
       protocol: TCP
